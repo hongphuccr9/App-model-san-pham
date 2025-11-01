@@ -22,14 +22,14 @@ export const generateFashionImage = async (
   modelImage: File,
   productImage: File,
   outfitImage: File | null,
-  promptText: string
+  promptText: string,
+  apiKey: string,
 ): Promise<string | null> => {
     try {
-        if (!process.env.API_KEY) {
-            alert("Please configure your API Key.");
-            throw new Error("API_KEY environment variable is not set");
+        if (!apiKey) {
+            throw new Error("API Key is required.");
         }
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: apiKey });
 
         const modelImagePart = await fileToGenerativePart(modelImage);
         const productImagePart = await fileToGenerativePart(productImage);

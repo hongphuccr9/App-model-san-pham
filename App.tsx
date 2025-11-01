@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { OptionGroup } from './components/OptionGroup';
 import { SparklesIcon } from './components/icons/SparklesIcon';
@@ -23,10 +23,19 @@ const App: React.FC = () => {
     const [customPose, setCustomPose] = useState<string>('');
 
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+    const [apiKey, setApiKey] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
-    const isGenerationDisabled = !modelImage || !productImage || isLoading;
+    useEffect(() => {
+        // Tải API key từ localStorage khi component được mount
+        const storedApiKey = localStorage.getItem('gemini-api-key');
+        if (storedApiKey) {
+            setApiKey(storedApiKey);
+        }
+    }, []);
+
+    const isGenerationDisabled = !modelImage || !productImage || !apiKey || isLoading;
 
     const buildPrompt = useCallback(() => {
         const promptParts: string[] = [];
@@ -72,9 +81,19 @@ const App: React.FC = () => {
 
         return promptParts.join(' ');
     }, [outfitImage, selectedOutfits, selectedBackground, customBackground, selectedPhotoStyle, customPhotoStyle, selectedAccessories, customAccessories, selectedPoses, customPose]);
+    
+    const handleApiKeyChange = (key: string) => {
+        setApiKey(key);
+        // Lưu API key vào localStorage để ghi nhớ cho lần sau
+        localStorage.setItem('gemini-api-key', key);
+    };
 
     const handleGenerate = async () => {
         if (isGenerationDisabled) return;
+        if (!apiKey) {
+            setError('Vui lòng nhập Gemini API Key của bạn.');
+            return;
+        }
 
         setIsLoading(true);
         setError(null);
@@ -83,7 +102,7 @@ const App: React.FC = () => {
         const prompt = buildPrompt();
 
         try {
-            const result = await generateFashionImage(modelImage!, productImage!, outfitImage, prompt);
+            const result = await generateFashionImage(modelImage!, productImage!, outfitImage, prompt, apiKey);
             
             if (!result) {
                 throw new Error('Image generation failed. Please try again.');
@@ -202,8 +221,30 @@ const App: React.FC = () => {
                             )}
                         </div>
 
-                         {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
+                        {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
                         
+                        <div className="mt-4">
+                            <label htmlFor="api-key-input" className="block text-sm font-medium text-gray-700">
+                                Gemini API Key
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    type="password"
+                                    id="api-key-input"
+                                    value={apiKey}
+                                    onChange={(e) => handleApiKeyChange(e.target.value)}
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition"
+                                    placeholder="Dán API key của bạn vào đây"
+                                />
+                            </div>
+                            <p className="mt-1 text-xs text-gray-500">
+                                Bạn có thể lấy API key từ {' '}
+                                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline">
+                                    Google AI Studio
+                                </a>.
+                            </p>
+                        </div>
+
                         <div className="mt-6 flex flex-col gap-3">
                             <button 
                                 onClick={handleDownload}
