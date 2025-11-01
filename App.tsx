@@ -6,41 +6,54 @@ import { DownloadIcon } from './components/icons/DownloadIcon';
 import { OUTFIT_STYLES, PHOTO_STYLES, ACCESSORIES, POSES, BACKGROUND_STYLES } from './constants';
 import { generateFashionImage } from './services/geminiService';
 
-// Fix: Removed conflicting global declaration for window.aistudio.
-// The type is expected to be provided by the environment.
+const ApiKeyScreen: React.FC<{ onKeySubmit: (key: string) => void }> = ({ onKeySubmit }) => {
+    const [apiKeyInput, setApiKeyInput] = useState('');
 
-const ApiKeyScreen: React.FC<{ onKeySelected: () => void }> = ({ onKeySelected }) => (
-    <div className="flex flex-col items-center justify-center h-screen bg-violet-50 p-8">
-        <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md">
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">Chào mừng bạn!</h1>
-            <p className="text-gray-600 mb-6">
-                Để bắt đầu tạo ảnh, vui lòng chọn một Gemini API key. Việc này là bắt buộc để ứng dụng có thể hoạt động.
-            </p>
-            <button
-                onClick={onKeySelected}
-                className="w-full py-3 px-4 bg-violet-600 text-white font-semibold rounded-lg flex items-center justify-center gap-2 hover:bg-violet-700 transition-colors"
-            >
-                Chọn API Key
-            </button>
-            <p className="mt-4 text-xs text-gray-500">
-                Lưu ý: Việc sử dụng API có thể phát sinh chi phí. Xem chi tiết tại {' '}
-                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline">
-                    tài liệu thanh toán của Google
-                </a>.
-            </p>
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (apiKeyInput.trim()) {
+            onKeySubmit(apiKeyInput.trim());
+        }
+    };
+
+    return (
+        <div className="flex flex-col items-center justify-center h-screen bg-violet-50 p-8">
+            <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md w-full">
+                <h1 className="text-2xl font-bold text-gray-800 mb-4">Nhập Gemini API Key</h1>
+                <p className="text-gray-600 mb-6">
+                    Để bắt đầu tạo ảnh, vui lòng nhập Gemini API key của bạn. Ứng dụng cần key để có thể hoạt động.
+                </p>
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                     <input
+                        type="password"
+                        value={apiKeyInput}
+                        onChange={(e) => setApiKeyInput(e.target.value)}
+                        placeholder="Dán API key của bạn vào đây (AIza...)"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition"
+                        aria-label="Gemini API Key"
+                    />
+                    <button
+                        type="submit"
+                        disabled={!apiKeyInput.trim()}
+                        className="w-full py-3 px-4 bg-violet-600 text-white font-semibold rounded-lg flex items-center justify-center gap-2 hover:bg-violet-700 transition-colors disabled:bg-violet-300 disabled:cursor-not-allowed"
+                    >
+                        Tiếp tục
+                    </button>
+                </form>
+                <p className="mt-4 text-xs text-gray-500">
+                    Lưu ý: Việc sử dụng API có thể phát sinh chi phí. Xem chi tiết tại {' '}
+                    <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline">
+                        tài liệu thanh toán của Google
+                    </a>.
+                </p>
+            </div>
         </div>
-    </div>
-);
-
-// Check if running in an environment without AI Studio's key management (e.g., Vercel)
-const isExternalEnv = typeof window.aistudio === 'undefined';
+    );
+};
 
 
 const App: React.FC = () => {
-    // If in an external environment, assume API key is set. Otherwise, check for it.
-    const [hasApiKey, setHasApiKey] = useState(isExternalEnv);
-    // Only show checking screen if we are in AI Studio environment
-    const [isCheckingApiKey, setIsCheckingApiKey] = useState(!isExternalEnv);
+    const [apiKey, setApiKey] = useState<string | null>(null);
 
     const [modelImage, setModelImage] = useState<File | null>(null);
     const [productImage, setProductImage] = useState<File | null>(null);
@@ -61,36 +74,15 @@ const App: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        // This effect should only run in the AI Studio environment to check for the key.
-        if (isExternalEnv) {
-            return;
+        const storedKey = sessionStorage.getItem('gemini-api-key');
+        if (storedKey) {
+            setApiKey(storedKey);
         }
+    }, []);
 
-        const checkApiKey = async () => {
-            setIsCheckingApiKey(true);
-            try {
-                const hasKey = await window.aistudio.hasSelectedApiKey();
-                setHasApiKey(hasKey);
-            } catch (e) {
-                console.error("API key check failed", e);
-                setHasApiKey(false);
-            } finally {
-                setIsCheckingApiKey(false);
-            }
-        };
-
-        checkApiKey();
-    }, []); // Empty dependency array, runs once on mount.
-
-    const handleSelectKey = async () => {
-        try {
-            await window.aistudio.openSelectKey();
-            // Assume success and update UI immediately for better UX
-            setHasApiKey(true);
-        } catch (e) {
-            console.error("Failed to select API key", e);
-            setError("Không thể chọn API key. Vui lòng thử lại.");
-        }
+    const handleKeySubmit = (key: string) => {
+        sessionStorage.setItem('gemini-api-key', key);
+        setApiKey(key);
     };
     
     const isGenerationDisabled = !modelImage || !productImage || isLoading;
@@ -141,7 +133,7 @@ const App: React.FC = () => {
     }, [outfitImage, selectedOutfits, selectedBackground, customBackground, selectedPhotoStyle, customPhotoStyle, selectedAccessories, customAccessories, selectedPoses, customPose]);
     
     const handleGenerate = async () => {
-        if (isGenerationDisabled) return;
+        if (isGenerationDisabled || !apiKey) return;
 
         setIsLoading(true);
         setError(null);
@@ -150,7 +142,7 @@ const App: React.FC = () => {
         const prompt = buildPrompt();
 
         try {
-            const result = await generateFashionImage(modelImage!, productImage!, outfitImage, prompt);
+            const result = await generateFashionImage(modelImage!, productImage!, outfitImage, prompt, apiKey);
             
             if (!result) {
                 throw new Error('Image generation failed. Please try again.');
@@ -159,13 +151,10 @@ const App: React.FC = () => {
             setGeneratedImage(result);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
-             if (errorMessage.includes('Requested entity was not found')) {
-                if (isExternalEnv) {
-                    setError('API Key không hợp lệ hoặc đã bị xóa. Vui lòng kiểm tra biến môi trường của bạn.');
-                } else {
-                    setError('API Key đã chọn không hợp lệ hoặc đã bị xóa. Vui lòng chọn một key khác.');
-                    setHasApiKey(false); // Reset to show the selection screen again
-                }
+             if (errorMessage.includes('API key not valid') || errorMessage.includes('API Key Không Hợp Lệ')) {
+                setError('API Key không hợp lệ hoặc đã bị xóa. Vui lòng nhập lại key.');
+                sessionStorage.removeItem('gemini-api-key');
+                setApiKey(null);
             } else {
                 setError(errorMessage);
             }
@@ -189,19 +178,10 @@ const App: React.FC = () => {
         if (!generatedImage) return;
         handleDownloadImage(generatedImage, 0);
     };
-
-    if (isCheckingApiKey) {
-        return (
-            <div className="flex items-center justify-center h-screen bg-violet-50">
-                <p>Đang kiểm tra API Key...</p>
-            </div>
-        );
+    
+    if (!apiKey) {
+        return <ApiKeyScreen onKeySubmit={handleKeySubmit} />;
     }
-
-    if (!hasApiKey) {
-        return <ApiKeyScreen onKeySelected={handleSelectKey} />;
-    }
-
 
     return (
         <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-violet-50">
