@@ -32,10 +32,15 @@ const ApiKeyScreen: React.FC<{ onKeySelected: () => void }> = ({ onKeySelected }
     </div>
 );
 
+// Check if running in an environment without AI Studio's key management (e.g., Vercel)
+const isExternalEnv = typeof window.aistudio === 'undefined';
+
 
 const App: React.FC = () => {
-    const [hasApiKey, setHasApiKey] = useState(false);
-    const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
+    // If in an external environment, assume API key is set. Otherwise, check for it.
+    const [hasApiKey, setHasApiKey] = useState(isExternalEnv);
+    // Only show checking screen if we are in AI Studio environment
+    const [isCheckingApiKey, setIsCheckingApiKey] = useState(!isExternalEnv);
 
     const [modelImage, setModelImage] = useState<File | null>(null);
     const [productImage, setProductImage] = useState<File | null>(null);
@@ -55,22 +60,27 @@ const App: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
-    const checkApiKey = useCallback(async () => {
-        setIsCheckingApiKey(true);
-        try {
-            const hasKey = await window.aistudio.hasSelectedApiKey();
-            setHasApiKey(hasKey);
-        } catch (e) {
-            console.error("API key check failed", e);
-            setHasApiKey(false);
-        } finally {
-            setIsCheckingApiKey(false);
-        }
-    }, []);
-
     useEffect(() => {
+        // This effect should only run in the AI Studio environment to check for the key.
+        if (isExternalEnv) {
+            return;
+        }
+
+        const checkApiKey = async () => {
+            setIsCheckingApiKey(true);
+            try {
+                const hasKey = await window.aistudio.hasSelectedApiKey();
+                setHasApiKey(hasKey);
+            } catch (e) {
+                console.error("API key check failed", e);
+                setHasApiKey(false);
+            } finally {
+                setIsCheckingApiKey(false);
+            }
+        };
+
         checkApiKey();
-    }, [checkApiKey]);
+    }, []); // Empty dependency array, runs once on mount.
 
     const handleSelectKey = async () => {
         try {
@@ -150,8 +160,12 @@ const App: React.FC = () => {
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
              if (errorMessage.includes('Requested entity was not found')) {
-                setError('API Key đã chọn không hợp lệ hoặc đã bị xóa. Vui lòng chọn một key khác.');
-                setHasApiKey(false); // Reset to show the selection screen again
+                if (isExternalEnv) {
+                    setError('API Key không hợp lệ hoặc đã bị xóa. Vui lòng kiểm tra biến môi trường của bạn.');
+                } else {
+                    setError('API Key đã chọn không hợp lệ hoặc đã bị xóa. Vui lòng chọn một key khác.');
+                    setHasApiKey(false); // Reset to show the selection screen again
+                }
             } else {
                 setError(errorMessage);
             }
