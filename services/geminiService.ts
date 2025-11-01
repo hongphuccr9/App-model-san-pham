@@ -21,12 +21,12 @@ export const generateFashionImage = async (
   modelImage: File,
   productImage: File,
   outfitImage: File | null,
-  promptText: string,
-  apiKey: string,
+  promptText: string
 ): Promise<string | null> => {
     try {
+        const apiKey = process.env.API_KEY;
         if (!apiKey) {
-            throw new Error("API Key is required.");
+            throw new Error("API Key is not configured in the environment.");
         }
         const ai = new GoogleGenAI({ apiKey: apiKey });
 
@@ -86,6 +86,9 @@ export const generateFashionImage = async (
                     '<strong>Lỗi Vị Trí:</strong> Rất tiếc, Gemini API hiện không được hỗ trợ tại khu vực của bạn.'
                 );
             }
+
+            // Let other specific errors pass through to be handled by the UI
+            throw error;
         }
     
         // Fallback for other errors
