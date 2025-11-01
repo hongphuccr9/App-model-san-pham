@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { OptionGroup } from './components/OptionGroup';
@@ -6,6 +5,7 @@ import { SparklesIcon } from './components/icons/SparklesIcon';
 import { DownloadIcon } from './components/icons/DownloadIcon';
 import { OUTFIT_STYLES, PHOTO_STYLES, ACCESSORIES, POSES, BACKGROUND_STYLES } from './constants';
 import { generateFashionImage } from './services/geminiService';
+import { CloseIcon } from './components/icons/CloseIcon';
 
 const App: React.FC = () => {
     const [modelImage, setModelImage] = useState<File | null>(null);
@@ -86,6 +86,11 @@ const App: React.FC = () => {
         setApiKey(key);
         // Lưu API key vào localStorage để ghi nhớ cho lần sau
         localStorage.setItem('gemini-api-key', key);
+    };
+
+    const handleClearApiKey = () => {
+        setApiKey('');
+        localStorage.removeItem('gemini-api-key');
     };
 
     const handleGenerate = async () => {
@@ -221,21 +226,37 @@ const App: React.FC = () => {
                             )}
                         </div>
 
-                        {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
+                        {error && (
+                            <div 
+                                className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md mt-4 text-sm" 
+                                role="alert"
+                            >
+                                <p dangerouslySetInnerHTML={{ __html: error }} />
+                            </div>
+                        )}
                         
                         <div className="mt-4">
                             <label htmlFor="api-key-input" className="block text-sm font-medium text-gray-700">
                                 Gemini API Key
                             </label>
-                            <div className="mt-1">
+                            <div className="mt-1 relative">
                                 <input
                                     type="password"
                                     id="api-key-input"
                                     value={apiKey}
                                     onChange={(e) => handleApiKeyChange(e.target.value)}
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition"
+                                    className="w-full p-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition"
                                     placeholder="Dán API key của bạn vào đây"
                                 />
+                                {apiKey && (
+                                    <button 
+                                        onClick={handleClearApiKey}
+                                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                                        aria-label="Clear API Key"
+                                    >
+                                        <CloseIcon />
+                                    </button>
+                                )}
                             </div>
                             <p className="mt-1 text-xs text-gray-500">
                                 Bạn có thể lấy API key từ {' '}
